@@ -1,0 +1,47 @@
+name: MacRDP-Tailscale
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: MacRDP
+    runs-on: macos-latest
+    
+    steps:
+    # 1. Tailscale Install और Connect करना
+    - name: Connect to Tailscale
+      env:
+        TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+      run: |
+        echo "Installing Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | sh
+        
+        echo "Starting Tailscale Daemon..."
+        sudo tailscaled > /dev/null 2>&1 &
+        sleep 5
+        
+        echo "Authenticating Tailscale..."
+        sudo tailscale up --authkey="$TAILSCALE_AUTH_KEY" --ssh
+
+    # 2. macOS Screen Sharing (VNC/RDP) को इनेबल करना
+    - name: Enable macOS Screen Sharing
+      run: |
+        echo "Configuring macOS Screen Sharing..."
+        # Screen Sharing (VNC) सर्विस को ऑन करना
+        sudo launchctl kickstart -k system/com.apple.screensharing
+        
+        # runner यूजर के लिए पासवर्ड सेट करना (ताकि आप लॉगिन कर सकें)
+        # default user 'runner' होता है, पासवर्ड 'Password123' सेट किया है
+        sudo dscl . -passwd /Users/runner Password123
+        
+        echo "Screen Sharing is enabled. User: runner, Password: Password123"
+
+    # 3. GitHub Runner के IP को Tailscale नेटवर्क पर दिखाना
+    - name: Get Tailscale IP
+      run: |
+        echo "Your Machine Tailscale IP is:"
+        tailscale ip -4
+
+    # 4. Session को चालू रखना (tmate के जरिए)
+    - name: Keep Alive via tmate
+      uses: mxschmitt/action-tmate@v3
