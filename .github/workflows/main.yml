@@ -8,32 +8,34 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    # 1. Tailscale Install और Connect करना
-    - name: Connect to Tailscale
+    # 1. Homebrew के जरिए Tailscale CLI इंस्टॉल करना
+    - name: Install and Connect to Tailscale
       env:
         TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
       run: |
-        echo "Installing Tailscale..."
-        curl -fsSL https://tailscale.com/install.sh | sh
+        echo "Installing Tailscale via Homebrew..."
+        # CLI वर्जन इंस्टॉल करने के लिए tailscale-cli का उपयोग करें
+        brew install tailscale
         
         echo "Starting Tailscale Daemon..."
-        sudo tailscaled > /dev/null 2>&1 &
+        # macOS पर टेलस्केल बैकग्राउंड सर्विस को शुरू करना
+        sudo brew services start tailscale
+        
+        # थोड़ा रुकें ताकि बैकग्राउंड सर्विस ठीक से स्टार्ट हो जाए
         sleep 5
         
         echo "Authenticating Tailscale..."
+        # अब 'tailscale' कमांड काम करेगी
         sudo tailscale up --authkey="$TAILSCALE_AUTH_KEY" --ssh
 
     # 2. macOS Screen Sharing (VNC/RDP) को इनेबल करना
     - name: Enable macOS Screen Sharing
       run: |
         echo "Configuring macOS Screen Sharing..."
-        # Screen Sharing (VNC) सर्विस को ऑन करना
         sudo launchctl kickstart -k system/com.apple.screensharing
         
-        # runner यूजर के लिए पासवर्ड सेट करना (ताकि आप लॉगिन कर सकें)
-        # default user 'runner' होता है, पासवर्ड 'Password123' सेट किया है
+        # runner यूजर के लिए पासवर्ड सेट करना
         sudo dscl . -passwd /Users/runner Password123
-        
         echo "Screen Sharing is enabled. User: runner, Password: Password123"
 
     # 3. GitHub Runner के IP को Tailscale नेटवर्क पर दिखाना
