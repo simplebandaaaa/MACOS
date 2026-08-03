@@ -5,7 +5,7 @@ on:
 jobs:
   build:
     name: MacRDP
-    runs-runs-on: macos-latest
+    runs-on: macos-latest  # यहाँ 'runs-runs-on' की गलती को ठीक कर दिया गया है
     
     steps:
     # 1. Tailscale CLI इंस्टॉल और कनेक्ट करना
@@ -19,17 +19,24 @@ jobs:
         sleep 5
         sudo tailscale up --authkey="$TAILSCALE_AUTH_KEY" --ssh
 
-    # 2. स्क्रीन शेयरिंग को नए तरीके से ऑन करना
+    # 2. स्क्रीन शेयरिंग (VNC) को नए macOS के लिए सही तरीके से ऑन करना
     - name: Force Enable macOS Screen Sharing
       run: |
-        echo "Enabling Screen Sharing (VNC)..."
-        # नए macOS वर्शन्स के लिए स्क्रीन शेयरिंग किकस्टार्ट करना
-        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+        echo "Configuring Screen Sharing..."
+        # नए macOS के लिए सही और वर्किंग कमांड:
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvnclegacy -vnclegacy yes
         
-        # runner यूजर का पासवर्ड 'Password123' सेट करना
+        # VNC का एक सीक्रेट पासवर्ड (Secret Password) सेट करना (8 कैरेक्टर का होना जरूरी है)
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvncpw -vncpw Secret12
+        
+        # सर्विस को रीस्टार्ट करना
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent
+        
+        # runner यूजर का सिस्टम पासवर्ड 'Password123' सेट करना
         sudo dscl . -passwd /Users/runner Password123
         
-        echo "Screen Sharing has been configured!"
+        echo "Screen Sharing successfully started!"
 
     # 3. IP एड्रेस दिखाना
     - name: Get Tailscale IP
